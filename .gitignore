@@ -32,6 +32,10 @@ venv.bak/
 *.manifest
 *.spec
 
+# Allow dist/GameScout.exe to be committed
+!dist/GameScout.exe
+!dist/data/
+
 # Data files (optional - uncomment if you want to exclude data)
 # data/
 # *.json
