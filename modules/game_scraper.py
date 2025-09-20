@@ -94,6 +94,27 @@ class GameScraper:
             chrome_options.add_argument('--window-size=1920,1080')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
 
+            # 临时文件和缓存管理 - 减少临时文件产生
+            chrome_options.add_argument('--disable-background-timer-throttling')
+            chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+            chrome_options.add_argument('--disable-renderer-backgrounding')
+            chrome_options.add_argument('--disable-features=TranslateUI')
+            chrome_options.add_argument('--disable-ipc-flooding-protection')
+            chrome_options.add_argument('--no-default-browser-check')
+            chrome_options.add_argument('--no-first-run')
+            chrome_options.add_argument('--disable-logging')
+            chrome_options.add_argument('--disable-gpu-logging')
+            chrome_options.add_argument('--silent')
+            chrome_options.add_argument('--disable-background-networking')
+            chrome_options.add_argument('--disable-sync')
+
+            # 设置临时目录到项目目录而不是系统临时目录
+            temp_dir = os.path.join(os.getcwd(), 'temp_chrome')
+            os.makedirs(temp_dir, exist_ok=True)
+            chrome_options.add_argument(f'--user-data-dir={temp_dir}')
+            chrome_options.add_argument(f'--data-path={temp_dir}')
+            chrome_options.add_argument(f'--disk-cache-dir={temp_dir}')
+
             # 使用固定的搜索引擎UA
             chrome_options.add_argument(f'--user-agent={self.fixed_user_agent}')
 
@@ -126,11 +147,37 @@ class GameScraper:
     def stop(self):
         """停止采集"""
         self.should_stop = True
+        self.cleanup_driver()
+
+    def cleanup_driver(self):
+        """清理WebDriver资源"""
         if self.driver:
             try:
+                # 尝试关闭所有窗口
                 self.driver.quit()
-            except:
-                pass
+                self.logger.info("WebDriver已正常关闭")
+            except Exception as e:
+                self.logger.warning(f"WebDriver关闭时出现异常: {str(e)}")
+                try:
+                    # 强制终止进程
+                    import psutil
+                    import os
+                    current_pid = os.getpid()
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        if 'chrome' in proc.info['name'].lower() and proc.info['pid'] != current_pid:
+                            try:
+                                proc.terminate()
+                            except:
+                                pass
+                except ImportError:
+                    # 如果没有psutil，使用基本清理
+                    pass
+            finally:
+                self.driver = None
+
+    def __del__(self):
+        """析构函数，确保资源清理"""
+        self.cleanup_driver()
                 
     def scrape_games(self, progress_callback=None, stop_flag=None):
         """
@@ -545,10 +592,21 @@ class GameScraper:
                     url = url.split('?v=')[0]
                     self.logger.info(f"移除?v=参数后的URL: {url}")
 
-                # 移除重复的/index.html
+                # 更全面的重复/index.html检测和修复
+                # 1. 检测并修复 /index.html/index.html 结尾的情况
                 if url.endswith('/index.html/index.html'):
                     url = url.replace('/index.html/index.html', '/index.html')
                     self.logger.info(f"修复重复index.html后的URL: {url}")
+
+                # 2. 检测并修复中间出现重复的情况，如 /index.html/index.html/
+                elif '/index.html/index.html/' in url:
+                    url = url.replace('/index.html/index.html/', '/index.html/')
+                    self.logger.info(f"修复中间重复index.html后的URL: {url}")
+
+                # 3. 检测并修复多重重复的情况
+                while '/index.html/index.html' in url:
+                    url = url.replace('/index.html/index.html', '/index.html')
+                    self.logger.info(f"修复多重重复index.html后的URL: {url}")
 
             # 验证是否为itch.zone域名
             if 'itch.zone' not in url:
@@ -567,26 +625,62 @@ class GameScraper:
                     url = 'https://' + url
 
             # 验证是否符合标准的itch.zone游戏URL格式
-            # 格式: https://html-classic.itch.zone/html/{数字}/{游戏名}/index.html
-            itch_zone_pattern = r'^https://html-classic\.itch\.zone/html/\d+/[^/\s"\'&]+/index\.html$'
+            # 支持两种格式:
+            # 1. https://html-classic.itch.zone/html/{数字}/{游戏名}/index.html
+            # 2. https://html-classic.itch.zone/html/{数字}/index.html (直接在ID目录下)
+            itch_zone_patterns = [
+                r'^https://html-classic\.itch\.zone/html/\d+/[^/\s"\'&]+/index\.html$',  # 标准格式
+                r'^https://html-classic\.itch\.zone/html/\d+/index\.html$'  # 直接格式
+            ]
 
-            if re.match(itch_zone_pattern, url, re.IGNORECASE):
-                self.logger.info(f"验证通过的标准itch.zone URL: {url}")
-                return url
-            elif 'html-classic.itch.zone' in url:
+            for pattern in itch_zone_patterns:
+                if re.match(pattern, url, re.IGNORECASE):
+                    self.logger.info(f"验证通过的itch.zone URL: {url}")
+                    return url
+
+            if 'html-classic.itch.zone' in url:
                 # 如果包含html-classic.itch.zone但格式不标准，尝试修复
-                # 提取数字ID和游戏名
-                match = re.search(r'html-classic\.itch\.zone/html/(\d+)/([^/\s"\'&]+)', url, re.IGNORECASE)
+                # 提取数字ID和游戏名/路径
+                match = re.search(r'html-classic\.itch\.zone/html/(\d+)/(.+)', url, re.IGNORECASE)
                 if match:
                     game_id = match.group(1)
-                    game_name = match.group(2)
-                    # 重构标准URL，避免重复的index.html
-                    if not game_name.endswith('/index.html'):
+                    path_part = match.group(2)
+
+                    # 特殊情况1: 如果路径部分就是 "index.html"，说明这是直接在ID目录下的游戏
+                    if path_part == 'index.html':
+                        fixed_url = f"https://html-classic.itch.zone/html/{game_id}/index.html"
+                        self.logger.info(f"修复直接index.html格式的URL: {fixed_url}")
+                        return fixed_url
+
+                    # 特殊情况2: 如果路径部分是 "index.html/index.html"，去除重复
+                    elif path_part == 'index.html/index.html':
+                        fixed_url = f"https://html-classic.itch.zone/html/{game_id}/index.html"
+                        self.logger.info(f"修复重复index.html的URL: {fixed_url}")
+                        return fixed_url
+
+                    # 特殊情况3: 如果路径部分以 "/index.html/index.html" 结尾，去除重复
+                    elif path_part.endswith('/index.html/index.html'):
+                        # 提取游戏名部分（去除重复的/index.html/index.html）
+                        game_name = path_part.replace('/index.html/index.html', '')
                         fixed_url = f"https://html-classic.itch.zone/html/{game_id}/{game_name}/index.html"
+                        self.logger.info(f"修复路径中重复index.html的URL: {fixed_url}")
+                        return fixed_url
+
+                    # 正常情况: 如果路径部分不以index.html结尾，添加index.html
+                    elif not path_part.endswith('/index.html'):
+                        # 确保路径部分不是单独的index.html（避免重复）
+                        if path_part != 'index.html':
+                            fixed_url = f"https://html-classic.itch.zone/html/{game_id}/{path_part}/index.html"
+                        else:
+                            fixed_url = f"https://html-classic.itch.zone/html/{game_id}/index.html"
+                        self.logger.info(f"修复后的itch.zone URL: {fixed_url}")
+                        return fixed_url
+
+                    # 如果路径部分已经正确以/index.html结尾，直接返回
                     else:
-                        fixed_url = f"https://html-classic.itch.zone/html/{game_id}/{game_name}"
-                    self.logger.info(f"修复后的itch.zone URL: {fixed_url}")
-                    return fixed_url
+                        fixed_url = f"https://html-classic.itch.zone/html/{game_id}/{path_part}"
+                        self.logger.info(f"URL格式已正确: {fixed_url}")
+                        return fixed_url
 
             # 如果是其他itch.zone域名，也接受
             elif '.itch.zone' in url:

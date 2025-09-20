@@ -85,8 +85,23 @@ class AzGamesScraper:
     def stop_scraping(self):
         """停止采集"""
         self.should_stop = True
+        self.cleanup_driver()
+
+    def cleanup_driver(self):
+        """清理WebDriver资源"""
         if self.driver:
-            self.driver.quit()
+            try:
+                # 尝试关闭所有窗口
+                self.driver.quit()
+                self.logger.info("AzGames WebDriver已正常关闭")
+            except Exception as e:
+                self.logger.warning(f"AzGames WebDriver关闭时出现异常: {str(e)}")
+            finally:
+                self.driver = None
+
+    def __del__(self):
+        """析构函数，确保资源清理"""
+        self.cleanup_driver()
 
     def scrape_games(self, progress_callback=None, stop_flag=None):
         """

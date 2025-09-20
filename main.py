@@ -13,6 +13,8 @@ import os
 import sys
 from datetime import datetime
 import logging
+import atexit
+import signal
 
 from modules.port_detector import PortDetector
 from modules.game_scraper import GameScraper
@@ -27,6 +29,9 @@ class GameScoutApp:
         self.root = root
         self.root.title("GameScout - 游戏采集工具")
         self.root.geometry("800x600")
+
+        # 注册清理函数
+        self.register_cleanup_handlers()
 
         # 设置图标
         try:
@@ -76,6 +81,78 @@ class GameScoutApp:
         
         # 初始化端口
         self.detect_port()
+
+    def register_cleanup_handlers(self):
+        """注册程序退出时的清理处理器"""
+        # 注册atexit清理函数
+        atexit.register(self.cleanup_on_exit)
+
+        # 注册信号处理器（Windows）
+        try:
+            signal.signal(signal.SIGTERM, self.signal_handler)
+            signal.signal(signal.SIGINT, self.signal_handler)
+        except AttributeError:
+            # 某些信号在Windows上可能不可用
+            pass
+
+        # 注册窗口关闭事件
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def signal_handler(self, signum, frame):
+        """信号处理器"""
+        self.logger.info(f"接收到信号 {signum}，开始清理...")
+        self.cleanup_on_exit()
+        sys.exit(0)
+
+    def on_closing(self):
+        """窗口关闭事件处理"""
+        self.logger.info("程序正在关闭，清理资源...")
+        self.cleanup_on_exit()
+        self.root.destroy()
+
+    def cleanup_on_exit(self):
+        """程序退出时的清理函数"""
+        try:
+            # 停止所有采集活动
+            self.is_scraping = False
+
+            # 清理所有scraper实例
+            scrapers_to_clean = [
+                ('game_scraper', self.game_scraper),
+                ('azgames_scraper', self.azgames_scraper),
+                ('current_scraper', getattr(self, 'current_scraper', None))
+            ]
+
+            for name, scraper in scrapers_to_clean:
+                if scraper:
+                    try:
+                        # 尝试多种停止方法
+                        if hasattr(scraper, 'stop'):
+                            scraper.stop()
+                        elif hasattr(scraper, 'stop_scraping'):
+                            scraper.stop_scraping()
+
+                        # 如果有driver属性，确保关闭
+                        if hasattr(scraper, 'driver') and scraper.driver:
+                            try:
+                                scraper.driver.quit()
+                            except:
+                                pass
+
+                        self.logger.debug(f"已清理 {name}")
+                    except Exception as e:
+                        self.logger.error(f"清理 {name} 时出错: {str(e)}")
+
+            # 强制垃圾回收
+            import gc
+            gc.collect()
+
+            self.logger.info("资源清理完成")
+
+        except Exception as e:
+            # 清理过程中的错误不应该阻止程序退出
+            print(f"清理过程中出错: {str(e)}")
+            pass
         
     def setup_logging(self):
         """设置日志系统"""
@@ -949,10 +1026,10 @@ FAQ等信息参考：{url}
             embed_url = game.get('embed_url', '').strip()
 
             if iframe_url:
-                iframe_embed_url = iframe_url
+                iframe_embed_url = self.clean_url_for_display(iframe_url)
                 iframe_embed_label = labels['iframe_url']
             elif embed_url:
-                iframe_embed_url = embed_url
+                iframe_embed_url = self.clean_url_for_display(embed_url)
                 iframe_embed_label = labels['embed_url']
             else:
                 continue  # 跳过没有有效链接的游戏
@@ -1067,10 +1144,8 @@ FAQ等信息参考：{url}
 
                 # 复制格式化内容按钮
                 def copy_formatted():
-                    # 清理embed_url，去掉itch.zone链接后面的?v=参数
-                    clean_embed_url = embed_url
-                    if 'itch.zone' in embed_url and '?v=' in embed_url:
-                        clean_embed_url = embed_url.split('?v=')[0]
+                    # 清理embed_url，使用与game_scraper相同的逻辑
+                    clean_embed_url = self.clean_url_for_display(embed_url)
 
                     formatted_content = f"FAQ参考：{url}\nIFRAME引入地址：{clean_embed_url}"
                     self.root.clipboard_clear()
@@ -1096,6 +1171,37 @@ FAQ等信息参考：{url}
             # 恢复输入框
             self.manual_url_var.set(url)
             messagebox.showerror("错误", f"获取iframe地址时发生错误：\n{str(e)}")
+
+    def clean_url_for_display(self, url):
+        """
+        清理URL用于显示，去除重复的/index.html和?v=参数
+        与game_scraper.py中的clean_iframe_url逻辑保持一致
+        """
+        if not url:
+            return url
+
+        clean_url = url
+
+        # 清理itch.zone URL中的?v=参数和重复的/index.html
+        if 'itch.zone' in clean_url:
+            # 移除?v=参数
+            if '?v=' in clean_url:
+                clean_url = clean_url.split('?v=')[0]
+
+            # 更全面的重复/index.html检测和修复
+            # 1. 检测并修复 /index.html/index.html 结尾的情况
+            if clean_url.endswith('/index.html/index.html'):
+                clean_url = clean_url.replace('/index.html/index.html', '/index.html')
+
+            # 2. 检测并修复中间出现重复的情况，如 /index.html/index.html/
+            elif '/index.html/index.html/' in clean_url:
+                clean_url = clean_url.replace('/index.html/index.html/', '/index.html/')
+
+            # 3. 检测并修复多重重复的情况
+            while '/index.html/index.html' in clean_url:
+                clean_url = clean_url.replace('/index.html/index.html', '/index.html')
+
+        return clean_url
 
     def open_website(self, event):
         """打开prompt2tool.com网站"""

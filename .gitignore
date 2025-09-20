@@ -63,6 +63,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+temp_chrome/
 
 # Game data exports
 prompts_export_*.txt
