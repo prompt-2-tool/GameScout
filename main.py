@@ -19,15 +19,13 @@ import signal
 from modules.port_detector import PortDetector
 from modules.game_scraper import GameScraper
 from modules.azgames_scraper import AzGamesScraper
-from modules.zapgames_scraper import ZapGamesScraper
-from modules.gameflare_scraper import GameFlareScraper
 from modules.data_manager import DataManager
 
 
 class GameScoutApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("GameScout - 游戏采集工具")
+        self.root.title("GameScout v2.2 - 游戏采集工具")
         self.root.geometry("800x600")
 
         # 注册清理函数
@@ -66,19 +64,19 @@ class GameScoutApp:
                             pass
         except Exception as e:
             print(f"图标加载失败: {e}")  # 调试信息
-        
+
         # 初始化组件
         self.port_detector = PortDetector()
         self.game_scraper = GameScraper()
         self.azgames_scraper = None  # 按需创建
         self.data_manager = DataManager()
-        
+
         # 设置日志
         self.setup_logging()
-        
+
         # 创建界面
         self.create_widgets()
-        
+
         # 初始化端口
         self.detect_port()
 
@@ -153,7 +151,7 @@ class GameScoutApp:
             # 清理过程中的错误不应该阻止程序退出
             print(f"清理过程中出错: {str(e)}")
             pass
-        
+
     def setup_logging(self):
         """设置日志系统"""
         logging.basicConfig(
@@ -164,7 +162,7 @@ class GameScoutApp:
             ]
         )
         self.logger = logging.getLogger(__name__)
-        
+
     def create_widgets(self):
         """创建界面组件"""
         # 主框架
@@ -239,7 +237,7 @@ class GameScoutApp:
                   command=self.get_manual_iframe).grid(row=0, column=1, sticky=tk.W)
 
         ttk.Label(settings_frame, text="支持平台:", foreground="gray").grid(row=3, column=0, sticky=tk.W, pady=(0, 5))
-        ttk.Label(settings_frame, text="Itch, AzGames, ZapGames",
+        ttk.Label(settings_frame, text="Itch, AzGames，更多平台详见下方工具页面",
                  foreground="gray").grid(row=3, column=1, sticky=tk.W, pady=(0, 5))
 
         # 创建标签页
@@ -252,11 +250,8 @@ class GameScoutApp:
         # 创建azgames.io标签页
         self.create_azgames_tab()
 
-        # 创建zapgames.io标签页
-        self.create_zapgames_tab()
-
-        # 创建gameflare.com标签页
-        self.create_gameflare_tab()
+        # 创建工具集标签页
+        self.create_tools_tab()
 
         # 创建功能标签页
         self.create_function_tab()
@@ -346,85 +341,105 @@ class GameScoutApp:
         ttk.Button(azgames_button_frame, text="清空日志",
                   command=lambda: self.clear_log('azgames')).pack(side=tk.LEFT, padx=5)
 
-    def create_zapgames_tab(self):
-        """创建zapgames.io标签页"""
-        zapgames_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(zapgames_frame, text="ZapGames")
+
+
+
+
+    def create_tools_tab(self):
+        """创建工具标签页"""
+        tools_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tools_frame, text="工具")
 
         # 配置网格权重
-        zapgames_frame.columnconfigure(1, weight=1)
-        zapgames_frame.rowconfigure(2, weight=1)
+        tools_frame.columnconfigure(0, weight=1)
+        tools_frame.columnconfigure(1, weight=1)
 
-        # 采集按钮
-        button_frame = ttk.Frame(zapgames_frame)
-        button_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+        # 通用工具
+        general_frame = ttk.LabelFrame(tools_frame, text="通用工具", padding="10")
+        general_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 15))
+        general_frame.columnconfigure(0, weight=1)
+        general_frame.columnconfigure(1, weight=1)
 
-        ttk.Button(button_frame, text="开始采集ZapGames",
-                  command=lambda: self.start_scraping('zapgames')).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(button_frame, text="停止采集",
-                  command=self.stop_scraping).pack(side=tk.LEFT, padx=5)
+        # 通用工具列表
+        general_tools = [
+            ("Iframe检测工具", "https://prompt2tool.com/tools/development/iframe-compatibility-tester", "检测网页iframe兼容性和可嵌入性"),
+            ("Embed代码生成器", "https://prompt2tool.com/tools/development/iframe-embed-code-generator", "生成标准的iframe嵌入代码")
+        ]
 
-        # 状态标签
-        self.zapgames_status_label = ttk.Label(zapgames_frame, text="就绪", foreground="green")
-        self.zapgames_status_label.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+        for i, (tool_name, tool_url, tool_desc) in enumerate(general_tools):
+            col = i % 2
 
-        # 日志文本框
-        log_frame = ttk.LabelFrame(zapgames_frame, text="采集日志", padding="5")
-        log_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
-        log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
+            tool_container = ttk.Frame(general_frame)
+            tool_container.grid(row=0, column=col, sticky=(tk.W, tk.E), padx=10, pady=5)
+            tool_container.columnconfigure(0, weight=1)
 
-        self.zapgames_log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70)
-        self.zapgames_log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+            tool_link = ttk.Label(tool_container, text=tool_name,
+                                 font=('Arial', 10, 'bold'), foreground='blue', cursor='hand2')
+            tool_link.grid(row=0, column=0, sticky=tk.W)
+            tool_link.bind("<Button-1>", lambda e, url=tool_url: self.open_tool_url(url))
+            tool_link.bind("<Enter>", lambda e, label=tool_link: label.configure(foreground='darkblue'))
+            tool_link.bind("<Leave>", lambda e, label=tool_link: label.configure(foreground='blue'))
 
-        # 按钮框架
-        zapgames_button_frame = ttk.Frame(zapgames_frame)
-        zapgames_button_frame.grid(row=3, column=0, columnspan=2, pady=(10, 0), sticky=tk.W)
+            tool_btn = ttk.Button(tool_container, text="打开工具",
+                                 command=lambda url=tool_url: self.open_tool_url(url))
+            tool_btn.grid(row=1, column=0, pady=(3, 0))
 
-        ttk.Button(zapgames_button_frame, text="查看ZapGames数据",
-                  command=lambda: self.view_data('zapgames.io')).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(zapgames_button_frame, text="清空日志",
-                  command=lambda: self.clear_log('zapgames')).pack(side=tk.LEFT, padx=5)
+            ttk.Label(tool_container, text=tool_desc,
+                     font=('Arial', 8), foreground='gray').grid(row=2, column=0, sticky=tk.W, pady=(3, 0))
 
-    def create_gameflare_tab(self):
-        """创建gameflare.com标签页"""
-        gameflare_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(gameflare_frame, text="GameFlare")
+        # 手动游戏提取工具
+        platform_frame = ttk.LabelFrame(tools_frame, text="手动游戏提取工具", padding="8")
+        platform_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        platform_frame.columnconfigure(0, weight=1)
+        platform_frame.columnconfigure(1, weight=1)
+        platform_frame.columnconfigure(2, weight=1)
 
-        # 配置网格权重
-        gameflare_frame.columnconfigure(1, weight=1)
-        gameflare_frame.rowconfigure(2, weight=1)
+        # 游戏平台工具列表
+        platform_tools = [
+            ("Itch游戏提取", "https://prompt2tool.com/tools/development/itch-game-iframe-extractor"),
+            ("AzGames游戏提取", "https://prompt2tool.com/tools/development/az-games-iframe-extractor"),
+            ("ArmorGames游戏提取", "https://prompt2tool.com/tools/development/iframe-compatibility-tester"),
+            ("Miniplay游戏提取", "https://prompt2tool.com/tools/development/miniplay-game-iframe-extractor"),
+            ("CrazyGames游戏提取", "https://prompt2tool.com/tools/development/crazygames-iframe-extractor"),
+            ("Y8游戏提取", "https://prompt2tool.com/tools/development/y8-iframe-extractor")
+        ]
 
-        # 采集按钮
-        button_frame = ttk.Frame(gameflare_frame)
-        button_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+        # 按3列布局排列，更紧凑
+        for i, (tool_name, tool_url) in enumerate(platform_tools):
+            row = i // 3
+            col = i % 3
 
-        ttk.Button(button_frame, text="开始采集GameFlare",
-                  command=lambda: self.start_scraping('gameflare')).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(button_frame, text="停止采集",
-                  command=self.stop_scraping).pack(side=tk.LEFT, padx=5)
+            tool_container = ttk.Frame(platform_frame)
+            tool_container.grid(row=row, column=col, sticky=(tk.W, tk.E), padx=3, pady=3)
+            tool_container.columnconfigure(0, weight=1)
 
-        # 状态标签
-        self.gameflare_status_label = ttk.Label(gameflare_frame, text="就绪", foreground="green")
-        self.gameflare_status_label.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+            if tool_url:  # 有URL的工具
+                tool_link = ttk.Label(tool_container, text=tool_name,
+                                     font=('Arial', 9, 'bold'), foreground='blue', cursor='hand2')
+                tool_link.grid(row=0, column=0, sticky=tk.W)
+                tool_link.bind("<Button-1>", lambda e, url=tool_url: self.open_tool_url(url))
+                tool_link.bind("<Enter>", lambda e, label=tool_link: label.configure(foreground='darkblue'))
+                tool_link.bind("<Leave>", lambda e, label=tool_link: label.configure(foreground='blue'))
 
-        # 日志文本框
-        log_frame = ttk.LabelFrame(gameflare_frame, text="采集日志", padding="5")
-        log_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
-        log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
+                tool_btn = ttk.Button(tool_container, text="打开",
+                                     command=lambda url=tool_url: self.open_tool_url(url))
+                tool_btn.grid(row=1, column=0, pady=(2, 0))
+            else:  # 暂未提供的工具
+                tool_label = ttk.Label(tool_container, text=tool_name,
+                                      font=('Arial', 9, 'bold'), foreground='gray')
+                tool_label.grid(row=0, column=0, sticky=tk.W)
 
-        self.gameflare_log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70)
-        self.gameflare_log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+                unavailable_label = ttk.Label(tool_container, text="暂未提供",
+                                            font=('Arial', 8), foreground='red')
+                unavailable_label.grid(row=1, column=0, pady=(2, 0))
 
-        # 按钮框架
-        gameflare_button_frame = ttk.Frame(gameflare_frame)
-        gameflare_button_frame.grid(row=3, column=0, columnspan=2, pady=(10, 0), sticky=tk.W)
-
-        ttk.Button(gameflare_button_frame, text="查看GameFlare数据",
-                  command=lambda: self.view_data('gameflare.com')).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(gameflare_button_frame, text="清空日志",
-                  command=lambda: self.clear_log('gameflare')).pack(side=tk.LEFT, padx=5)
+    def open_tool_url(self, url):
+        """打开工具URL"""
+        try:
+            import webbrowser
+            webbrowser.open(url)
+        except Exception as e:
+            messagebox.showerror("错误", f"无法打开链接: {str(e)}")
 
     def create_function_tab(self):
         """创建导出标签页"""
@@ -464,9 +479,7 @@ class GameScoutApp:
 
         self.platform_vars = {
             'itch.io': tk.BooleanVar(value=True),
-            'azgames.io': tk.BooleanVar(value=True),
-            'zapgames.io': tk.BooleanVar(value=True),
-            'gameflare.com': tk.BooleanVar(value=True)
+            'azgames.io': tk.BooleanVar(value=True)
         }
 
         col = 0
@@ -581,12 +594,6 @@ FAQ等信息参考：{url}
         elif platform == 'azgames':
             self.azgames_log_text.insert(tk.END, log_entry)
             self.azgames_log_text.see(tk.END)
-        elif platform == 'zapgames':
-            self.zapgames_log_text.insert(tk.END, log_entry)
-            self.zapgames_log_text.see(tk.END)
-        elif platform == 'gameflare':
-            self.gameflare_log_text.insert(tk.END, log_entry)
-            self.gameflare_log_text.see(tk.END)
         else:
             # 如果没有指定平台，记录到所有日志区域
             if hasattr(self, 'itch_log_text'):
@@ -595,18 +602,12 @@ FAQ等信息参考：{url}
             if hasattr(self, 'azgames_log_text'):
                 self.azgames_log_text.insert(tk.END, log_entry)
                 self.azgames_log_text.see(tk.END)
-            if hasattr(self, 'zapgames_log_text'):
-                self.zapgames_log_text.insert(tk.END, log_entry)
-                self.zapgames_log_text.see(tk.END)
-            if hasattr(self, 'gameflare_log_text'):
-                self.gameflare_log_text.insert(tk.END, log_entry)
-                self.gameflare_log_text.see(tk.END)
 
         self.root.update_idletasks()
 
         # 同时记录到日志文件
         self.logger.info(message)
-        
+
     def detect_port(self):
         """检测可用端口"""
         try:
@@ -619,7 +620,7 @@ FAQ等信息参考：{url}
                 self.log_message(f"端口 {port} 不可用，自动切换到端口 {available_port}")
         except ValueError:
             messagebox.showerror("错误", "请输入有效的端口号")
-            
+
     def start_scraping(self, platform):
         """开始采集"""
         if self.is_scraping:
@@ -637,23 +638,13 @@ FAQ等信息参考：{url}
             # 创建AzGames采集器实例
             max_games = self.get_max_games()
             self.current_scraper = AzGamesScraper(max_games_limit=max_games)
-        elif platform == 'zapgames':
-            self.zapgames_status_label.config(text="正在采集...", foreground="orange")
-            # 创建ZapGames采集器实例
-            max_games = self.get_max_games()
-            self.current_scraper = ZapGamesScraper(max_games_limit=max_games)
-        elif platform == 'gameflare':
-            self.gameflare_status_label.config(text="正在采集...", foreground="orange")
-            # 创建GameFlare采集器实例
-            max_games = self.get_max_games()
-            self.current_scraper = GameFlareScraper(max_games_limit=max_games)
 
 
         # 在新线程中运行采集
         self.scraping_thread = threading.Thread(target=self.run_scraping, args=(platform,))
         self.scraping_thread.daemon = True
         self.scraping_thread.start()
-        
+
     def stop_scraping(self):
         """停止采集"""
         self.is_scraping = False
@@ -663,7 +654,7 @@ FAQ等信息参考：{url}
             elif hasattr(self.current_scraper, 'stop_scraping'):
                 self.current_scraper.stop_scraping()
         self.log_message("正在停止采集...", self.current_platform)
-        
+
     def get_max_games(self):
         """获取用户设定的采集数量"""
         try:
@@ -702,11 +693,6 @@ FAQ等信息参考：{url}
                         self.itch_status_label.config(text=stats_text, foreground="blue")
                     elif platform == 'azgames':
                         self.azgames_status_label.config(text=stats_text, foreground="blue")
-                    elif platform == 'zapgames':
-                        self.zapgames_status_label.config(text=stats_text, foreground="blue")
-                    elif platform == 'gameflare':
-                        self.gameflare_status_label.config(text=stats_text, foreground="blue")
-
 
             # 开始采集
             if platform == 'itch':
@@ -715,16 +701,6 @@ FAQ等信息参考：{url}
                     stop_flag=lambda: not self.is_scraping
                 )
             elif platform == 'azgames':
-                games = self.current_scraper.scrape_games(
-                    progress_callback=progress_callback,
-                    stop_flag=lambda: not self.is_scraping
-                )
-            elif platform == 'zapgames':
-                games = self.current_scraper.scrape_games(
-                    progress_callback=progress_callback,
-                    stop_flag=lambda: not self.is_scraping
-                )
-            elif platform == 'gameflare':
                 games = self.current_scraper.scrape_games(
                     progress_callback=progress_callback,
                     stop_flag=lambda: not self.is_scraping
@@ -755,12 +731,8 @@ FAQ等信息参考：{url}
                 self.itch_status_label.config(text="采集完成", foreground="green")
             elif platform == 'azgames':
                 self.azgames_status_label.config(text="采集完成", foreground="green")
-            elif platform == 'zapgames':
-                self.zapgames_status_label.config(text="采集完成", foreground="green")
-            elif platform == 'gameflare':
-                self.gameflare_status_label.config(text="采集完成", foreground="green")
 
-            
+
     def view_data(self, platform=None):
         """查看采集的数据"""
         games = self.data_manager.load_games(platform=platform)
@@ -796,9 +768,9 @@ FAQ等信息参考：{url}
                 game.get("embed_url", "") or game.get("iframe_url", ""),
                 game.get("platform", "")
             ))
-            
+
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
     def export_data(self, platform=None):
         """导出数据"""
         try:
@@ -885,20 +857,12 @@ FAQ等信息参考：{url}
             self.itch_log_text.delete(1.0, tk.END)
         elif platform == 'azgames':
             self.azgames_log_text.delete(1.0, tk.END)
-        elif platform == 'zapgames':
-            self.zapgames_log_text.delete(1.0, tk.END)
-        elif platform == 'gameflare':
-            self.gameflare_log_text.delete(1.0, tk.END)
         else:
             # 清空所有日志
             if hasattr(self, 'itch_log_text'):
                 self.itch_log_text.delete(1.0, tk.END)
             if hasattr(self, 'azgames_log_text'):
                 self.azgames_log_text.delete(1.0, tk.END)
-            if hasattr(self, 'zapgames_log_text'):
-                self.zapgames_log_text.delete(1.0, tk.END)
-            if hasattr(self, 'gameflare_log_text'):
-                self.gameflare_log_text.delete(1.0, tk.END)
 
     def preview_prompts(self):
         """预览生成的prompts"""
@@ -975,7 +939,7 @@ FAQ等信息参考：{url}
         all_games = []
 
         # 加载所有平台的数据
-        for platform in ['itch.io', 'azgames.io', 'zapgames.io', 'gameflare.com']:
+        for platform in ['itch.io', 'azgames.io']:
             platform_games = self.data_manager.load_games(platform=platform)
             all_games.extend(platform_games)
 
@@ -996,7 +960,7 @@ FAQ等信息参考：{url}
         all_games = []
 
         # 加载所有平台的最近数据
-        for platform in ['itch.io', 'azgames.io', 'zapgames.io', 'gameflare.com']:
+        for platform in ['itch.io', 'azgames.io']:
             platform_games = self.data_manager.get_recent_games(platform=platform, hours=24)
             all_games.extend(platform_games)
 
@@ -1058,8 +1022,7 @@ FAQ等信息参考：{url}
         # 检查URL是否属于支持的平台
         supported_platforms = {
             'itch.io': 'itch.io',
-            'azgames.io': 'azgames.io',
-            'zapgames.io': 'zapgames.io'
+            'azgames.io': 'azgames.io'
         }
 
         platform = None
@@ -1069,7 +1032,7 @@ FAQ等信息参考：{url}
                 break
 
         if not platform:
-            messagebox.showerror("错误", "不支持的平台！\n支持的平台：Itch, AzGames, ZapGames")
+            messagebox.showerror("错误", "不支持的平台！\n支持的平台：Itch, AzGames")
             return
 
         # 显示处理中状态
@@ -1090,12 +1053,6 @@ FAQ等信息参考：{url}
             elif platform == 'azgames.io':
                 scraper = AzGamesScraper()
                 # 对于azgames.io，调用scrape_game_detail方法
-                game_data = scraper.scrape_game_detail(url, game_name)
-                if game_data:
-                    embed_url = game_data.get('embed_url')
-            elif platform == 'zapgames.io':
-                scraper = ZapGamesScraper()
-                # 对于zapgames.io，调用scrape_game_detail方法
                 game_data = scraper.scrape_game_detail(url, game_name)
                 if game_data:
                     embed_url = game_data.get('embed_url')

@@ -61,24 +61,31 @@ GameScout.exe
 ### Main Features
 
 #### 1. Multi-Platform Scraping
-- Support for 4 gaming platforms
+- Support for 2 gaming platforms (Itch, AzGames) with automated batch scraping
 - Independent scraping interface and logs for each platform
 - Intelligent scraping strategies with automatic anti-bot handling
 - Configurable scraping quantity limits
 
-#### 2. Data Management
+#### 2. Integrated Development Toolkit
+- **8 Specialized Tools**: Direct browser access to professional game development tools
+- **Iframe Compatibility Tester**: Test webpage iframe compatibility and embeddability
+- **Embed Code Generator**: Generate standard iframe embed code
+- **Multi-Platform Extractors**: Support for 6 gaming platforms (Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8)
+- **Organized Tool Categories**: General development tools and platform-specific extractors
+
+#### 3. Data Management
 - **View Data**: Display scraped game information in table format
 - **Smart Deduplication**: Automatically detect and skip duplicate games
 - **Data Export**: Support JSON/CSV formats with full/incremental export
 - **Data Statistics**: Show detailed statistics of successful scraping and skipped duplicates
 
-#### 3. Prompt Export
+#### 4. Prompt Export
 - **Template System**: Built-in multiple prompt templates (standard, concise, detailed, etc.)
 - **Incremental Export**: Export only games added in the last 24 hours
 - **Full Export**: Export all historical scraped data
 - **Formatted Output**: Generate structured TXT files for further processing
 
-#### 4. Manual Fetch
+#### 5. Manual Fetch
 - Support for inputting single game page URLs
 - Quick iframe address extraction
 - One-click copy of formatted results
@@ -158,8 +165,6 @@ GameScout/
 │   ├── port_detector.py       # Port detection module
 │   ├── game_scraper.py        # Generic game scraper base class
 │   ├── azgames_scraper.py     # AzGames platform scraper
-│   ├── zapgames_scraper.py    # ZapGames platform scraper
-│   ├── gameflare_scraper.py   # GameFlare platform scraper
 │   └── data_manager.py        # Data management module
 ├── data/                      # Data storage directory
 │   ├── games.json             # JSON data file
@@ -253,13 +258,21 @@ This project is for learning and research purposes only. Please comply with rele
 
 ## Changelog
 
+### v2.2.0 (2025-09-21)
+- ✨ Added comprehensive game development toolkit with 8 specialized tools
+- ✨ New "Tools" tab with direct browser access to iframe extraction tools
+- ✨ Support for 6 gaming platforms: Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8
+- ✨ Integrated iframe compatibility tester and embed code generator
+- 🎨 Enhanced UI with organized tool categories and improved navigation
+- 📝 Updated manual fetch feature with expanded platform support information
+
 ### v2.1.0 (2025-09-20)
 - 🔧 Fixed duplicate `/index.html/index.html` URL issues
 - 🔧 Improved WebDriver resource management
 - 📝 Comprehensive bilingual documentation
 
 ### v2.0.0 (2025-09-20)
-- ✨ Added multi-platform support (4 gaming platforms)
+- ✨ Added multi-platform support (2 gaming platforms)
 - ✨ Smart deduplication to avoid duplicate data
 - ✨ Prompt template export with incremental/full export options
 - ✨ Manual fetch feature for single URL processing
