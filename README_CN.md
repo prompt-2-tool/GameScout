@@ -62,7 +62,7 @@ GameScout.exe
 ### 主要功能模块
 
 #### 1. 多平台采集
-- 支持2个游戏平台的自动批量采集（Itch, AzGames）
+- 支持4个游戏平台的自动批量采集（Itch, AzGames, ArmorGames, GeoGuessr）
 - 每个平台独立的采集界面和日志
 - 智能采集策略，自动处理反爬机制
 - 可设置采集数量限制
@@ -71,7 +71,7 @@ GameScout.exe
 - **8个专业工具**: 直接在浏览器中访问专业游戏开发工具
 - **Iframe兼容性检测**: 测试网页iframe兼容性和可嵌入性
 - **Embed代码生成器**: 生成标准的iframe嵌入代码
-- **多平台提取器**: 支持6个游戏平台（Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8）
+- **多平台提取器**: 支持7个游戏平台（Itch.io, AzGames, ArmorGames, CrazyGames, Y8, GeoGuessr等）
 - **工具分类管理**: 通用开发工具和平台专用提取器
 
 #### 3. 数据管理
@@ -166,6 +166,8 @@ GameScout/
 │   ├── port_detector.py       # 端口检测模块
 │   ├── game_scraper.py        # 通用游戏采集基类
 │   ├── azgames_scraper.py     # AzGames平台采集器
+│   ├── armorgames_scraper.py  # ArmorGames平台采集器
+│   ├── geoguessr_scraper.py   # GeoGuessr平台采集器
 │   └── data_manager.py        # 数据管理模块
 ├── data/                      # 数据存储目录
 │   ├── games.json             # JSON数据文件
@@ -223,10 +225,20 @@ A: 检查输入的URL格式是否正确，确保网络连接正常
 
 ## 更新日志
 
+### v2.5.0 (2025-09-23)
+- ✨ 新增ArmorGames.com平台支持，支持自动化采集
+- ✨ 新增GeoGuessr.io平台支持，支持自动化采集
+- 🎮 现已支持4个游戏平台：Itch, AzGames, ArmorGames, GeoGuessr
+- 🔧 增强新平台的URL提取算法和数据解析能力
+- 📊 更新数据管理系统，高效处理多平台数据
+- 🎨 为ArmorGames和GeoGuessr添加专用标签页，保持统一UI设计
+- 📝 更新手动获取功能，支持ArmorGames和GeoGuessr平台URL
+- 🔄 改进平台检测和URL验证机制，覆盖所有支持平台
+
 ### v2.2.0 (2025-09-21)
 - ✨ 新增完整的游戏开发工具集，包含8个专业工具
 - ✨ 新增"工具"标签页，可直接在浏览器中访问iframe提取工具
-- ✨ 支持6个游戏平台：Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8
+- ✨ 支持5个游戏平台：Itch.io, AzGames, ArmorGames, CrazyGames, Y8
 - ✨ 集成iframe兼容性检测器和embed代码生成器
 - 🎨 优化UI界面，工具分类管理，改进导航体验
 - 📝 更新手动获取功能，扩展平台支持信息

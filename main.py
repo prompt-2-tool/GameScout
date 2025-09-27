@@ -19,13 +19,15 @@ import signal
 from modules.port_detector import PortDetector
 from modules.game_scraper import GameScraper
 from modules.azgames_scraper import AzGamesScraper
+from modules.armorgames_scraper import ArmorGamesScraper
+from modules.geoguessr_scraper import GeoGuessrScraper
 from modules.data_manager import DataManager
 
 
 class GameScoutApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("GameScout v2.2 - 游戏采集工具")
+        self.root.title("GameScout v2.6 - 游戏采集工具")
         self.root.geometry("800x600")
 
         # 注册清理函数
@@ -216,12 +218,12 @@ class GameScoutApp:
 
         # 采集数量设置
         ttk.Label(settings_frame, text="采集数量:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.max_games_var = tk.StringVar(value="50")
+        self.max_games_var = tk.StringVar(value="0")
         games_frame = ttk.Frame(settings_frame)
         games_frame.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=5)
 
         ttk.Entry(games_frame, textvariable=self.max_games_var, width=10).pack(side=tk.LEFT)
-        ttk.Label(games_frame, text="个游戏 (默认50，0表示不限制)").pack(side=tk.LEFT, padx=(5, 0))
+        ttk.Label(games_frame, text="个游戏 (默认0不限制，设置数字限制采集数量)").pack(side=tk.LEFT, padx=(5, 0))
 
         # 手动获取
         ttk.Label(settings_frame, text="手动获取:").grid(row=2, column=0, sticky=tk.W, pady=5)
@@ -237,7 +239,7 @@ class GameScoutApp:
                   command=self.get_manual_iframe).grid(row=0, column=1, sticky=tk.W)
 
         ttk.Label(settings_frame, text="支持平台:", foreground="gray").grid(row=3, column=0, sticky=tk.W, pady=(0, 5))
-        ttk.Label(settings_frame, text="Itch, AzGames，更多平台详见下方工具页面",
+        ttk.Label(settings_frame, text="Itch, AzGames, ArmorGames, GeoGuessr，更多平台详见下方工具页面",
                  foreground="gray").grid(row=3, column=1, sticky=tk.W, pady=(0, 5))
 
         # 创建标签页
@@ -249,6 +251,12 @@ class GameScoutApp:
 
         # 创建azgames.io标签页
         self.create_azgames_tab()
+
+        # 创建armorgames.com标签页
+        self.create_armorgames_tab()
+
+        # 创建geoguessr.io标签页
+        self.create_geoguessr_tab()
 
         # 创建工具集标签页
         self.create_tools_tab()
@@ -343,6 +351,87 @@ class GameScoutApp:
 
 
 
+    def create_armorgames_tab(self):
+        """创建armorgames.com标签页"""
+        armorgames_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(armorgames_frame, text="ArmorGames")
+
+        # 配置网格权重
+        armorgames_frame.columnconfigure(1, weight=1)
+        armorgames_frame.rowconfigure(2, weight=1)
+
+        # 采集按钮
+        button_frame = ttk.Frame(armorgames_frame)
+        button_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+
+        ttk.Button(button_frame, text="开始采集ArmorGames",
+                  command=lambda: self.start_scraping('armorgames')).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="停止采集",
+                  command=self.stop_scraping).pack(side=tk.LEFT, padx=5)
+
+        # 状态标签
+        self.armorgames_status_label = ttk.Label(armorgames_frame, text="就绪", foreground="green")
+        self.armorgames_status_label.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+
+        # 日志文本框
+        log_frame = ttk.LabelFrame(armorgames_frame, text="采集日志", padding="5")
+        log_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+
+        self.armorgames_log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70)
+        self.armorgames_log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # 按钮框架
+        armorgames_button_frame = ttk.Frame(armorgames_frame)
+        armorgames_button_frame.grid(row=3, column=0, columnspan=2, pady=(10, 0), sticky=tk.W)
+
+        ttk.Button(armorgames_button_frame, text="查看ArmorGames数据",
+                  command=lambda: self.view_data('armorgames.com')).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(armorgames_button_frame, text="清空日志",
+                  command=lambda: self.clear_log('armorgames')).pack(side=tk.LEFT, padx=5)
+
+    def create_geoguessr_tab(self):
+        """创建geoguessr.io标签页"""
+        geoguessr_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(geoguessr_frame, text="GeoGuessr")
+
+        # 配置网格权重
+        geoguessr_frame.columnconfigure(1, weight=1)
+        geoguessr_frame.rowconfigure(2, weight=1)
+
+        # 采集按钮
+        button_frame = ttk.Frame(geoguessr_frame)
+        button_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+
+        ttk.Button(button_frame, text="开始采集GeoGuessr",
+                  command=lambda: self.start_scraping('geoguessr')).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="停止采集",
+                  command=self.stop_scraping).pack(side=tk.LEFT, padx=5)
+
+        # 状态标签
+        self.geoguessr_status_label = ttk.Label(geoguessr_frame, text="就绪", foreground="green")
+        self.geoguessr_status_label.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky=tk.W)
+
+        # 日志文本框
+        log_frame = ttk.LabelFrame(geoguessr_frame, text="采集日志", padding="5")
+        log_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+
+        self.geoguessr_log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70)
+        self.geoguessr_log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # 按钮框架
+        geoguessr_button_frame = ttk.Frame(geoguessr_frame)
+        geoguessr_button_frame.grid(row=3, column=0, columnspan=2, pady=(10, 0), sticky=tk.W)
+
+        ttk.Button(geoguessr_button_frame, text="查看GeoGuessr数据",
+                  command=lambda: self.view_data('geoguessr.io')).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(geoguessr_button_frame, text="清空日志",
+                  command=lambda: self.clear_log('geoguessr')).pack(side=tk.LEFT, padx=5)
+
+
 
 
     def create_tools_tab(self):
@@ -399,9 +488,9 @@ class GameScoutApp:
             ("Itch游戏提取", "https://prompt2tool.com/tools/development/itch-game-iframe-extractor"),
             ("AzGames游戏提取", "https://prompt2tool.com/tools/development/az-games-iframe-extractor"),
             ("ArmorGames游戏提取", "https://prompt2tool.com/tools/development/iframe-compatibility-tester"),
-            ("Miniplay游戏提取", "https://prompt2tool.com/tools/development/miniplay-game-iframe-extractor"),
             ("CrazyGames游戏提取", "https://prompt2tool.com/tools/development/crazygames-iframe-extractor"),
-            ("Y8游戏提取", "https://prompt2tool.com/tools/development/y8-iframe-extractor")
+            ("Y8游戏提取", "https://prompt2tool.com/tools/development/y8-iframe-extractor"),
+            ("GeoGuessr游戏提取", "https://prompt2tool.com/tools/development/geoguessr-iframe-extractor")
         ]
 
         # 按3列布局排列，更紧凑
@@ -447,16 +536,12 @@ class GameScoutApp:
         self.notebook.add(function_frame, text="导出")
 
         # 配置网格权重
-        function_frame.columnconfigure(1, weight=1)
+        function_frame.columnconfigure(0, weight=1)
         function_frame.rowconfigure(2, weight=1)
-
-        # 标题
-        title_label = ttk.Label(function_frame, text="Prompt导出功能", font=('Arial', 14, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
 
         # 导出选项框架
         options_frame = ttk.LabelFrame(function_frame, text="导出选项", padding="10")
-        options_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        options_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         options_frame.columnconfigure(1, weight=1)
 
         # 数据范围选择
@@ -479,17 +564,27 @@ class GameScoutApp:
 
         self.platform_vars = {
             'itch.io': tk.BooleanVar(value=True),
-            'azgames.io': tk.BooleanVar(value=True)
+            'azgames.io': tk.BooleanVar(value=True),
+            'armorgames.com': tk.BooleanVar(value=True),
+            'geoguessr.io': tk.BooleanVar(value=True)
         }
 
+        # 将平台复选框分两行显示，每行最多3个
+        row = 0
         col = 0
         for platform, var in self.platform_vars.items():
             platform_display = platform.replace('.io', '').replace('.com', '').title()
-            ttk.Checkbutton(platform_frame, text=platform_display, variable=var).grid(row=0, column=col, sticky=tk.W, padx=(0, 15))
+            ttk.Checkbutton(platform_frame, text=platform_display, variable=var).grid(row=row, column=col, sticky=tk.W, padx=(0, 15), pady=2)
             col += 1
+            if col >= 3:  # 每行最多3个
+                col = 0
+                row += 1
 
-        # Prompt模板设置
-        ttk.Label(function_frame, text="Prompt模板:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=5)
+        # 模板选择
+        ttk.Label(options_frame, text="选择模板:", font=('Arial', 10, 'bold')).grid(row=2, column=0, sticky=tk.W, pady=5)
+
+        template_frame = ttk.Frame(options_frame)
+        template_frame.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=5)
 
         # 提供多个prompt模板选项
         prompt_templates = {
@@ -533,26 +628,22 @@ FAQ等信息参考：{url}
 {name} | {url} | {iframe_embed_url}"""
         }
 
-        # 默认使用标准版
-        default_prompt = prompt_templates["标准版"]
-
-        # 模板选择下拉框
-        ttk.Label(function_frame, text="模板选择:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=5)
         self.template_var = tk.StringVar(value="标准版")
-        template_combo = ttk.Combobox(function_frame, textvariable=self.template_var,
+        template_combo = ttk.Combobox(template_frame, textvariable=self.template_var,
                                      values=list(prompt_templates.keys()), state="readonly", width=15)
-        template_combo.grid(row=2, column=1, sticky=(tk.W), padx=5, pady=5)
+        template_combo.pack(side=tk.LEFT)
         template_combo.bind('<<ComboboxSelected>>', lambda e: self.update_prompt_template(prompt_templates))
 
-        # Prompt模板文本框
-        ttk.Label(function_frame, text="Prompt内容:").grid(row=3, column=0, sticky=(tk.W, tk.N), pady=5)
-        self.prompt_template_var = tk.StringVar(value=default_prompt)
+        # Prompt内容显示
+        ttk.Label(function_frame, text="Prompt内容:", font=('Arial', 10, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=(10, 5))
+
         self.prompt_text = scrolledtext.ScrolledText(function_frame, height=8, width=80, wrap=tk.WORD)
-        self.prompt_text.grid(row=3, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5, pady=5)
-        self.prompt_text.insert('1.0', default_prompt)
+        self.prompt_text.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        self.prompt_text.insert('1.0', prompt_templates["标准版"])
 
         # 存储模板字典供后续使用
         self.prompt_templates = prompt_templates
+        self.current_prompt_template = prompt_templates["标准版"]
 
         # 添加字段标签设置（保持兼容性）
         self.field_labels = {
@@ -564,22 +655,23 @@ FAQ等信息参考：{url}
 
         # 功能按钮
         button_frame = ttk.Frame(function_frame)
-        button_frame.grid(row=4, column=0, columnspan=2, pady=20)
+        button_frame.grid(row=3, column=0, pady=10)
 
         ttk.Button(button_frame, text="预览Prompt",
-                  command=self.preview_prompts).pack(side=tk.LEFT, padx=5)
+                  command=self.preview_prompts).pack(side=tk.LEFT, padx=10)
         ttk.Button(button_frame, text="导出全量数据",
-                  command=lambda: self.export_prompts(recent_only=False)).pack(side=tk.LEFT, padx=5)
+                  command=lambda: self.export_prompts(recent_only=False)).pack(side=tk.LEFT, padx=10)
         ttk.Button(button_frame, text="导出本次新增",
-                  command=lambda: self.export_prompts(recent_only=True)).pack(side=tk.LEFT, padx=5)
+                  command=lambda: self.export_prompts(recent_only=True)).pack(side=tk.LEFT, padx=10)
 
     def update_prompt_template(self, templates):
         """更新prompt模板"""
         selected_template = self.template_var.get()
         if selected_template in templates:
-            # 清空当前内容
+            # 更新当前模板内容
+            self.current_prompt_template = templates[selected_template]
+            # 更新文本框显示
             self.prompt_text.delete('1.0', tk.END)
-            # 插入新模板
             self.prompt_text.insert('1.0', templates[selected_template])
 
     def log_message(self, message, platform=None):
@@ -594,6 +686,12 @@ FAQ等信息参考：{url}
         elif platform == 'azgames':
             self.azgames_log_text.insert(tk.END, log_entry)
             self.azgames_log_text.see(tk.END)
+        elif platform == 'armorgames':
+            self.armorgames_log_text.insert(tk.END, log_entry)
+            self.armorgames_log_text.see(tk.END)
+        elif platform == 'geoguessr':
+            self.geoguessr_log_text.insert(tk.END, log_entry)
+            self.geoguessr_log_text.see(tk.END)
         else:
             # 如果没有指定平台，记录到所有日志区域
             if hasattr(self, 'itch_log_text'):
@@ -602,6 +700,12 @@ FAQ等信息参考：{url}
             if hasattr(self, 'azgames_log_text'):
                 self.azgames_log_text.insert(tk.END, log_entry)
                 self.azgames_log_text.see(tk.END)
+            if hasattr(self, 'armorgames_log_text'):
+                self.armorgames_log_text.insert(tk.END, log_entry)
+                self.armorgames_log_text.see(tk.END)
+            if hasattr(self, 'geoguessr_log_text'):
+                self.geoguessr_log_text.insert(tk.END, log_entry)
+                self.geoguessr_log_text.see(tk.END)
 
         self.root.update_idletasks()
 
@@ -638,6 +742,16 @@ FAQ等信息参考：{url}
             # 创建AzGames采集器实例
             max_games = self.get_max_games()
             self.current_scraper = AzGamesScraper(max_games_limit=max_games)
+        elif platform == 'armorgames':
+            self.armorgames_status_label.config(text="正在采集...", foreground="orange")
+            # 创建ArmorGames采集器实例
+            max_games = self.get_max_games()
+            self.current_scraper = ArmorGamesScraper(max_games_limit=max_games)
+        elif platform == 'geoguessr':
+            self.geoguessr_status_label.config(text="正在采集...", foreground="orange")
+            # 创建GeoGuessr采集器实例
+            max_games = self.get_max_games()
+            self.current_scraper = GeoGuessrScraper(max_games_limit=max_games)
 
 
         # 在新线程中运行采集
@@ -662,9 +776,9 @@ FAQ等信息参考：{url}
             if max_games <= 0:
                 max_games = None  # 0表示不限制
         except ValueError:
-            max_games = 50  # 默认值
-            self.max_games_var.set("50")
-            self.log_message("采集数量设置无效，使用默认值50", self.current_platform)
+            max_games = None  # 默认值改为不限制
+            self.max_games_var.set("0")
+            self.log_message("采集数量设置无效，使用默认值0（不限制）", self.current_platform)
         return max_games
 
     def run_scraping(self, platform):
@@ -693,6 +807,10 @@ FAQ等信息参考：{url}
                         self.itch_status_label.config(text=stats_text, foreground="blue")
                     elif platform == 'azgames':
                         self.azgames_status_label.config(text=stats_text, foreground="blue")
+                    elif platform == 'armorgames':
+                        self.armorgames_status_label.config(text=stats_text, foreground="blue")
+                    elif platform == 'geoguessr':
+                        self.geoguessr_status_label.config(text=stats_text, foreground="blue")
 
             # 开始采集
             if platform == 'itch':
@@ -701,6 +819,16 @@ FAQ等信息参考：{url}
                     stop_flag=lambda: not self.is_scraping
                 )
             elif platform == 'azgames':
+                games = self.current_scraper.scrape_games(
+                    progress_callback=progress_callback,
+                    stop_flag=lambda: not self.is_scraping
+                )
+            elif platform == 'armorgames':
+                games = self.current_scraper.scrape_games(
+                    progress_callback=progress_callback,
+                    stop_flag=lambda: not self.is_scraping
+                )
+            elif platform == 'geoguessr':
                 games = self.current_scraper.scrape_games(
                     progress_callback=progress_callback,
                     stop_flag=lambda: not self.is_scraping
@@ -719,7 +847,7 @@ FAQ等信息参考：{url}
                 else:
                     self.log_message(f"采集完成，共获取 {total} 个游戏，全部为新游戏", platform)
             else:
-                self.log_message("采集完成，未获取到游戏数据", platform)
+                self.log_message("采集完成，本次未获取到新游戏数据", platform)
 
         except Exception as e:
             self.log_message(f"采集过程中发生错误: {str(e)}", platform)
@@ -731,6 +859,10 @@ FAQ等信息参考：{url}
                 self.itch_status_label.config(text="采集完成", foreground="green")
             elif platform == 'azgames':
                 self.azgames_status_label.config(text="采集完成", foreground="green")
+            elif platform == 'armorgames':
+                self.armorgames_status_label.config(text="采集完成", foreground="green")
+            elif platform == 'geoguessr':
+                self.geoguessr_status_label.config(text="采集完成", foreground="green")
 
 
     def view_data(self, platform=None):
@@ -857,34 +989,68 @@ FAQ等信息参考：{url}
             self.itch_log_text.delete(1.0, tk.END)
         elif platform == 'azgames':
             self.azgames_log_text.delete(1.0, tk.END)
+        elif platform == 'armorgames':
+            self.armorgames_log_text.delete(1.0, tk.END)
+        elif platform == 'geoguessr':
+            self.geoguessr_log_text.delete(1.0, tk.END)
         else:
             # 清空所有日志
             if hasattr(self, 'itch_log_text'):
                 self.itch_log_text.delete(1.0, tk.END)
             if hasattr(self, 'azgames_log_text'):
                 self.azgames_log_text.delete(1.0, tk.END)
+            if hasattr(self, 'armorgames_log_text'):
+                self.armorgames_log_text.delete(1.0, tk.END)
+            if hasattr(self, 'geoguessr_log_text'):
+                self.geoguessr_log_text.delete(1.0, tk.END)
 
     def preview_prompts(self):
         """预览生成的prompts"""
         try:
-            # 获取所有游戏数据并去重
-            games = self.get_unique_games()
+            # 根据用户选择的数据范围获取游戏数据
+            data_range = self.export_range_var.get()
+            if data_range == "recent":
+                games = self.get_recent_unique_games()
+                range_desc = "本次新增（最近24小时）"
+            else:
+                games = self.get_unique_games()
+                range_desc = "全量数据"
 
             if not games:
-                messagebox.showinfo("信息", "暂无游戏数据")
+                messagebox.showinfo("信息", f"暂无{range_desc}游戏数据")
                 return
+
+            # 获取选中的平台信息
+            selected_platforms = []
+            for platform, var in self.platform_vars.items():
+                if var.get():
+                    platform_display = platform.replace('.io', '').replace('.com', '').title()
+                    selected_platforms.append(platform_display)
+
+            if not selected_platforms:
+                platform_desc = "所有平台"
+            else:
+                platform_desc = ", ".join(selected_platforms)
 
             # 生成prompts
             prompts = self.generate_prompts(games)
 
             # 创建预览窗口
             preview_window = tk.Toplevel(self.root)
-            preview_window.title("Prompt预览")
+            preview_window.title(f"Prompt预览 - {range_desc} - {platform_desc}")
             preview_window.geometry("800x600")
 
             # 创建文本区域
             text_area = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD)
             text_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+            # 添加头部信息
+            header = f"# GameScout Prompt预览 - {range_desc}\n"
+            header += f"# 选择平台: {platform_desc}\n"
+            header += f"# 预览时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            header += f"# 游戏数量: {len(prompts)}\n\n"
+            header += "=" * 50 + "\n\n"
+            text_area.insert(tk.END, header)
 
             # 显示prompts
             for i, prompt in enumerate(prompts, 1):
@@ -915,31 +1081,65 @@ FAQ等信息参考：{url}
             # 生成prompts
             prompts = self.generate_prompts(games)
 
-            # 生成文件名
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"prompts_export_{export_type}_{timestamp}.txt"
+            # 使用游戏数量作为默认文件名
+            default_filename = f"{len(prompts)}.txt"
+
+            # 让用户选择保存路径
+            from tkinter import filedialog
+            filename = filedialog.asksaveasfilename(
+                title=f"保存{type_desc}Prompts文件",
+                defaultextension=".txt",
+                filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
+                initialfile=default_filename
+            )
+
+            if not filename:  # 用户取消了保存
+                return
 
             # 写入文件
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(f"# GameScout Prompt导出 - {type_desc}数据\n")
                 f.write(f"# 导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"# 游戏数量: {len(prompts)}\n\n")
-                f.write("=" * 50 + "\n\n")
+                f.write(f"# 游戏数量: {len(prompts)}\n")
+
+                # 获取选中的平台信息
+                selected_platforms = []
+                for platform, var in self.platform_vars.items():
+                    if var.get():
+                        platform_display = platform.replace('.io', '').replace('.com', '').title()
+                        selected_platforms.append(platform_display)
+
+                if selected_platforms:
+                    f.write(f"# 选择平台: {', '.join(selected_platforms)}\n")
+                else:
+                    f.write(f"# 选择平台: 所有平台\n")
+
+                f.write("\n" + "=" * 50 + "\n\n")
 
                 for i, prompt in enumerate(prompts, 1):
                     f.write(f"{i}. {prompt}\n\n")
 
-            messagebox.showinfo("成功", f"{type_desc}Prompts已导出到: {filename}\n共导出 {len(prompts)} 个prompt")
+            messagebox.showinfo("成功", f"{type_desc}Prompts已导出到:\n{filename}\n\n共导出 {len(prompts)} 个prompt")
 
         except Exception as e:
             messagebox.showerror("错误", f"导出失败: {str(e)}")
 
     def get_unique_games(self):
-        """获取所有平台的游戏数据并按name去重"""
+        """获取选中平台的游戏数据并按name去重"""
         all_games = []
 
-        # 加载所有平台的数据
-        for platform in ['itch.io', 'azgames.io']:
+        # 获取用户选择的平台
+        selected_platforms = []
+        for platform, var in self.platform_vars.items():
+            if var.get():  # 如果平台被选中
+                selected_platforms.append(platform)
+
+        # 如果没有选择任何平台，默认加载所有平台
+        if not selected_platforms:
+            selected_platforms = ['itch.io', 'azgames.io', 'armorgames.com', 'geoguessr.io']
+
+        # 加载选中平台的数据
+        for platform in selected_platforms:
             platform_games = self.data_manager.load_games(platform=platform)
             all_games.extend(platform_games)
 
@@ -956,11 +1156,21 @@ FAQ等信息参考：{url}
         return unique_games
 
     def get_recent_unique_games(self):
-        """获取最近24小时的游戏数据并按name去重"""
+        """获取选中平台最近24小时的游戏数据并按name去重"""
         all_games = []
 
-        # 加载所有平台的最近数据
-        for platform in ['itch.io', 'azgames.io']:
+        # 获取用户选择的平台
+        selected_platforms = []
+        for platform, var in self.platform_vars.items():
+            if var.get():  # 如果平台被选中
+                selected_platforms.append(platform)
+
+        # 如果没有选择任何平台，默认加载所有平台
+        if not selected_platforms:
+            selected_platforms = ['itch.io', 'azgames.io', 'armorgames.com', 'geoguessr.io']
+
+        # 加载选中平台的最近数据
+        for platform in selected_platforms:
             platform_games = self.data_manager.get_recent_games(platform=platform, hours=24)
             all_games.extend(platform_games)
 
@@ -1022,7 +1232,9 @@ FAQ等信息参考：{url}
         # 检查URL是否属于支持的平台
         supported_platforms = {
             'itch.io': 'itch.io',
-            'azgames.io': 'azgames.io'
+            'azgames.io': 'azgames.io',
+            'armorgames.com': 'armorgames.com',
+            'geoguessr.io': 'geoguessr.io'
         }
 
         platform = None
@@ -1032,7 +1244,7 @@ FAQ等信息参考：{url}
                 break
 
         if not platform:
-            messagebox.showerror("错误", "不支持的平台！\n支持的平台：Itch, AzGames")
+            messagebox.showerror("错误", "不支持的平台！\n支持的平台：Itch, AzGames, ArmorGames, GeoGuessr")
             return
 
         # 显示处理中状态
@@ -1053,6 +1265,18 @@ FAQ等信息参考：{url}
             elif platform == 'azgames.io':
                 scraper = AzGamesScraper()
                 # 对于azgames.io，调用scrape_game_detail方法
+                game_data = scraper.scrape_game_detail(url, game_name)
+                if game_data:
+                    embed_url = game_data.get('embed_url')
+            elif platform == 'armorgames.com':
+                scraper = ArmorGamesScraper()
+                # 对于armorgames.com，调用scrape_game_detail方法
+                game_data = scraper.scrape_game_detail(url, game_name)
+                if game_data:
+                    embed_url = game_data.get('embed_url')
+            elif platform == 'geoguessr.io':
+                scraper = GeoGuessrScraper()
+                # 对于geoguessr.io，调用scrape_game_detail方法
                 game_data = scraper.scrape_game_detail(url, game_name)
                 if game_data:
                     embed_url = game_data.get('embed_url')

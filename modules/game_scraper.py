@@ -331,20 +331,30 @@ class GameScraper:
 
     def get_all_games_list(self, progress_callback=None, stop_flag=None):
         """
-        获取所有itch.io游戏的基本信息列表（名称和URL）
+        获取所有itch.io游戏的基本信息列表（名称和URL），并过滤已存在的游戏
 
         Args:
             progress_callback: 进度回调函数
             stop_flag: 停止标志函数
 
         Returns:
-            list: [(game_name, game_url), ...] 游戏信息元组列表
+            list: [(game_name, game_url), ...] 游戏信息元组列表（已过滤重复）
         """
         game_list = []
 
         try:
             if progress_callback:
-                progress_callback("使用requests方案获取itch.io游戏列表...")
+                progress_callback("正在获取已存在的游戏列表进行去重...")
+
+            # 获取已存在的游戏名称（跨平台去重）
+            from .data_manager import DataManager
+            data_manager = DataManager()
+            existing_games = data_manager.load_games()  # 加载所有平台的游戏
+            existing_names = {data_manager.normalize_game_name(game.get('name', ''))
+                            for game in existing_games}
+
+            if progress_callback:
+                progress_callback(f"数据库中已有 {len(existing_names)} 个游戏，开始获取itch.io游戏列表...")
 
             url = "https://itch.io/games/new-and-popular/featured/free/platform-web"
             response = self.session.get(url, timeout=30)
@@ -356,9 +366,10 @@ class GameScraper:
             game_links = soup.select('a.title.game_link[data-action="game_grid"]')
 
             if progress_callback:
-                progress_callback(f"在页面中找到 {len(game_links)} 个游戏链接")
+                progress_callback(f"在页面中找到 {len(game_links)} 个游戏链接，开始过滤重复...")
 
             processed_urls = set()
+            skipped_count = 0
 
             for link in game_links:
                 if stop_flag and stop_flag():
@@ -374,7 +385,7 @@ class GameScraper:
                     if game_url.startswith('/'):
                         game_url = 'https://itch.io' + game_url
 
-                    # 避免重复
+                    # 避免本次采集内重复
                     if game_url in processed_urls:
                         continue
 
@@ -383,18 +394,26 @@ class GameScraper:
 
                     # 验证游戏信息有效性
                     if game_name and self.is_valid_game_entry(game_name, game_url):
+                        # 检查是否已存在（跨平台去重）
+                        normalized_name = data_manager.normalize_game_name(game_name)
+                        if normalized_name in existing_names:
+                            skipped_count += 1
+                            self.logger.debug(f"跳过已存在游戏: {game_name}")
+                            continue
+
                         game_list.append((game_name, game_url))
                         processed_urls.add(game_url)
+                        existing_names.add(normalized_name)  # 添加到已存在列表，避免本次内部重复
 
                         if progress_callback and len(game_list) % 10 == 0:
-                            progress_callback(f"已收集 {len(game_list)} 个游戏信息...")
+                            progress_callback(f"已收集 {len(game_list)} 个新游戏，跳过 {skipped_count} 个重复...")
 
                 except Exception as e:
                     self.logger.error(f"处理游戏链接时出错: {str(e)}")
                     continue
 
             if progress_callback:
-                progress_callback(f"itch.io游戏列表获取完成，共 {len(game_list)} 个有效游戏")
+                progress_callback(f"itch.io游戏列表获取完成，共 {len(game_list)} 个新游戏，跳过 {skipped_count} 个重复")
 
         except Exception as e:
             self.logger.error(f"获取itch.io游戏列表失败: {str(e)}")

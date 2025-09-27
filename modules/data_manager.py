@@ -10,24 +10,41 @@ import os
 import sqlite3
 import logging
 import time
+import re
 from datetime import datetime
 from typing import List, Dict, Optional
 
 
 class DataManager:
     """数据管理器"""
-    
+
     def __init__(self, data_dir="data"):
         self.data_dir = data_dir
         self.json_file = os.path.join(data_dir, "games.json")
         self.db_file = os.path.join(data_dir, "games.db")
         self.logger = logging.getLogger(__name__)
-        
+
         # 创建数据目录
         os.makedirs(data_dir, exist_ok=True)
-        
+
         # 初始化数据库
         self.init_database()
+
+    def normalize_game_name(self, name):
+        """
+        标准化游戏名称用于去重比较
+        处理空格、符号、大小写等问题
+        """
+        if not name:
+            return ""
+
+        # 转换为小写
+        name = name.lower().strip()
+
+        # 移除常见符号和特殊字符，只保留字母数字
+        name = re.sub(r'[^a-zA-Z0-9]', '', name)
+
+        return name
         
     def init_database(self):
         """初始化SQLite数据库"""
@@ -98,87 +115,36 @@ class DataManager:
                 self.logger.warning("没有有效的游戏数据需要保存")
                 return {'saved': 0, 'duplicates': 0, 'total': len(games)}
 
-            # 去重处理
-            result = self.save_with_deduplication(valid_games, platform)
+            # 直接保存（采集阶段已经去重）
+            if valid_games:
+                # 保存到JSON文件
+                self.save_to_json(valid_games)
+                # 保存到SQLite数据库
+                self.save_to_database(valid_games)
 
             platform_info = f" ({platform})" if platform else ""
-            self.logger.info(f"游戏保存完成{platform_info} - 总数: {result['total']}, 新增: {result['saved']}, 重复跳过: {result['duplicates']}")
-            return result
+            self.logger.info(f"游戏保存完成{platform_info} - 总数: {len(games)}, 有效: {len(valid_games)}")
+
+            return {
+                'saved': len(valid_games),
+                'duplicates': 0,  # 采集阶段已经去重，这里不会有重复
+                'total': len(games)
+            }
 
         except Exception as e:
             self.logger.error(f"保存游戏数据失败: {str(e)}")
             return {'saved': 0, 'duplicates': 0, 'total': len(games)}
 
-    def save_with_deduplication(self, games: List[Dict], platform: str = None) -> Dict:
-        """
-        保存游戏数据并进行去重处理
 
-        Args:
-            games: 游戏数据列表
-            platform: 平台名称
-
-        Returns:
-            Dict: 保存统计信息
-        """
-        saved_count = 0
-        duplicate_count = 0
-        new_games = []
-
-        try:
-            # 获取现有游戏名称列表
-            existing_names = set()
-            with sqlite3.connect(self.db_file) as conn:
-                cursor = conn.cursor()
-                if platform:
-                    cursor.execute('SELECT name FROM games WHERE platform = ?', (platform,))
-                else:
-                    cursor.execute('SELECT name FROM games')
-                existing_names = {row[0].strip().lower() for row in cursor.fetchall()}
-
-            # 检查每个游戏是否重复
-            for game in games:
-                game_name = game.get('name', '').strip()
-                if not game_name:
-                    continue
-
-                # 使用小写进行比较，避免大小写差异
-                if game_name.lower() not in existing_names:
-                    new_games.append(game)
-                    existing_names.add(game_name.lower())  # 添加到已存在列表，避免本次采集内部重复
-                    saved_count += 1
-                    self.logger.debug(f"新游戏: {game_name}")
-                else:
-                    duplicate_count += 1
-                    self.logger.debug(f"重复游戏: {game_name}")
-
-            # 保存新游戏
-            if new_games:
-                # 保存到JSON文件
-                self.save_to_json(new_games)
-                # 保存到SQLite数据库
-                self.save_to_database(new_games)
-
-            return {
-                'saved': saved_count,
-                'duplicates': duplicate_count,
-                'total': len(games)
-            }
-
-        except Exception as e:
-            self.logger.error(f"去重保存失败: {str(e)}")
-            return {'saved': 0, 'duplicates': 0, 'total': len(games)}
 
     def save_to_json(self, games: List[Dict]):
-        """保存到JSON文件"""
+        """保存到JSON文件（采集阶段已去重，直接追加）"""
         # 加载现有数据
         existing_games = self.load_from_json()
-        
-        # 合并数据（避免重复）
-        existing_urls = {game.get('url') for game in existing_games}
-        new_games = [game for game in games if game.get('url') not in existing_urls]
-        
-        all_games = existing_games + new_games
-        
+
+        # 直接合并数据（采集阶段已经去重）
+        all_games = existing_games + games
+
         # 保存到文件
         with open(self.json_file, 'w', encoding='utf-8') as f:
             json.dump(all_games, f, ensure_ascii=False, indent=2)

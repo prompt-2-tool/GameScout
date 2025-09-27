@@ -61,7 +61,7 @@ GameScout.exe
 ### Main Features
 
 #### 1. Multi-Platform Scraping
-- Support for 2 gaming platforms (Itch, AzGames) with automated batch scraping
+- Support for 4 gaming platforms (Itch, AzGames, ArmorGames, GeoGuessr) with automated batch scraping
 - Independent scraping interface and logs for each platform
 - Intelligent scraping strategies with automatic anti-bot handling
 - Configurable scraping quantity limits
@@ -70,7 +70,7 @@ GameScout.exe
 - **8 Specialized Tools**: Direct browser access to professional game development tools
 - **Iframe Compatibility Tester**: Test webpage iframe compatibility and embeddability
 - **Embed Code Generator**: Generate standard iframe embed code
-- **Multi-Platform Extractors**: Support for 6 gaming platforms (Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8)
+- **Multi-Platform Extractors**: Support for 7 gaming platforms (Itch.io, AzGames, ArmorGames, CrazyGames, Y8, GeoGuessr, and more)
 - **Organized Tool Categories**: General development tools and platform-specific extractors
 
 #### 3. Data Management
@@ -165,6 +165,8 @@ GameScout/
 │   ├── port_detector.py       # Port detection module
 │   ├── game_scraper.py        # Generic game scraper base class
 │   ├── azgames_scraper.py     # AzGames platform scraper
+│   ├── armorgames_scraper.py  # ArmorGames platform scraper
+│   ├── geoguessr_scraper.py   # GeoGuessr platform scraper
 │   └── data_manager.py        # Data management module
 ├── data/                      # Data storage directory
 │   ├── games.json             # JSON data file
@@ -258,10 +260,20 @@ This project is for learning and research purposes only. Please comply with rele
 
 ## Changelog
 
+### v2.5.0 (2025-09-23)
+- ✨ Added ArmorGames.com platform support with automated scraping
+- ✨ Added GeoGuessr.io platform support with automated scraping
+- 🎮 Now supports 4 gaming platforms: Itch, AzGames, ArmorGames, GeoGuessr
+- 🔧 Enhanced URL extraction algorithms for new platforms
+- 📊 Updated data management to handle multi-platform data efficiently
+- 🎨 Added dedicated tabs for ArmorGames and GeoGuessr with unified UI design
+- 📝 Updated manual fetch feature to support ArmorGames and GeoGuessr URLs
+- 🔄 Improved platform detection and URL validation across all supported platforms
+
 ### v2.2.0 (2025-09-21)
 - ✨ Added comprehensive game development toolkit with 8 specialized tools
 - ✨ New "Tools" tab with direct browser access to iframe extraction tools
-- ✨ Support for 6 gaming platforms: Itch.io, AzGames, ArmorGames, Miniplay, CrazyGames, Y8
+- ✨ Support for 5 gaming platforms: Itch.io, AzGames, ArmorGames, CrazyGames, Y8
 - ✨ Integrated iframe compatibility tester and embed code generator
 - 🎨 Enhanced UI with organized tool categories and improved navigation
 - 📝 Updated manual fetch feature with expanded platform support information
